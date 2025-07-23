@@ -1,0 +1,105 @@
+const express = require('express');
+const crypto = require('crypto');
+const CitizenQuery = require('../models/CitizenQuery');
+const blockchainService = require('../blockchainService');
+
+const router = express.Router();
+
+// Helper to compute hash of citizen query data
+function computeCitizenQueryHash(query) {
+  const queryString = JSON.stringify({
+    queryType: query.queryType,
+    title: query.title,
+    description: query.description,
+    citizenName: query.citizenName,
+    citizenPhone: query.citizenPhone,
+    citizenEmail: query.citizenEmail,
+    aadhaarId: query.aadhaarId,
+    surveyNumber: query.surveyNumber,
+    district: query.district,
+    tehsil: query.tehsil,
+    village: query.village,
+    status: query.status,
+    priority: query.priority,
+    dateSubmitted: query.dateSubmitted,
+    lastUpdated: query.lastUpdated,
+    assignedOfficer: query.assignedOfficer,
+    officialResponse: query.officialResponse,
+    resolutionDate: query.resolutionDate,
+    attachments: query.attachments,
+    trackingId: query.trackingId
+  });
+  return '0x' + crypto.createHash('sha256').update(queryString).digest('hex');
+}
+
+// Get all citizen queries
+router.get('/', async (req, res) => {
+  try {
+    const queries = await CitizenQuery.find();
+    res.json(queries);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get query by tracking ID
+router.get('/:trackingId', async (req, res) => {
+  try {
+    const query = await CitizenQuery.findOne({ trackingId: req.params.trackingId });
+    if (!query) return res.status(404).json({ message: 'Query not found' });
+    res.json(query);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Create new citizen query
+router.post('/', async (req, res) => {
+  try {
+    const newQuery = new CitizenQuery(req.body);
+    await newQuery.save();
+
+    // Compute hash and add to blockchain
+    const dataHash = computeCitizenQueryHash(newQuery);
+    const fromAddress = process.env.BLOCKCHAIN_DEFAULT_ADDRESS;
+    await blockchainService.addCitizenQueryHash(newQuery.trackingId, dataHash, fromAddress);
+
+    res.status(201).json(newQuery);
+  } catch (err) {
+    res.status(400).json({ message: 'Invalid data', error: err.message });
+  }
+});
+
+// Update citizen query by tracking ID
+router.put('/:trackingId', async (req, res) => {
+  try {
+    const updatedQuery = await CitizenQuery.findOneAndUpdate(
+      { trackingId: req.params.trackingId },
+      req.body,
+      { new: true }
+    );
+    if (!updatedQuery) return res.status(404).json({ message: 'Query not found' });
+
+    // Compute hash and update blockchain
+    const dataHash = computeCitizenQueryHash(updatedQuery);
+    const fromAddress = process.env.BLOCKCHAIN_DEFAULT_ADDRESS;
+    await blockchainService.updateCitizenQueryHash(updatedQuery.trackingId, dataHash, fromAddress);
+
+    res.json(updatedQuery);
+  } catch (err) {
+    res.status(400).json({ message: 'Invalid data', error: err.message });
+  }
+});
+
+// Delete citizen query by tracking ID
+router.delete('/:trackingId', async (req, res) => {
+  try {
+    const deletedQuery = await CitizenQuery.findOneAndDelete({ trackingId: req.params.trackingId });
+    if (!deletedQuery) return res.status(404).json({ message: 'Query not found' });
+    res.json({ message: 'Query deleted' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+module.exports = router;
