@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { LoginForm } from './components/Auth/LoginForm';
 import { CitizenDashboard } from './components/Citizen/CitizenDashboard';
@@ -20,6 +20,13 @@ function App() {
   const [selectedRecord, setSelectedRecord] = useState<LandRecord | null>(null);
   const [viewRecord, setViewRecord] = useState<LandRecord | null>(null);
   const [previousTab, setPreviousTab] = useState<string>('dashboard');
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/citizen-queries')
+      .then(res => res.json())
+      .then(data => setCitizenQueries(data))
+      .catch(err => console.error('Failed to fetch queries', err));
+  }, []);
 
   const handleAddRecord = async (recordData: Omit<LandRecord, 'id' | 'dateCreated' | 'lastUpdated'>) => {
     // Prepare form data for API
@@ -112,17 +119,29 @@ function App() {
     setActiveTab('edit-record');
   };
 
-  const handleSubmitQuery = (queryData: Omit<CitizenQuery, 'id' | 'dateSubmitted' | 'lastUpdated' | 'trackingId'>) => {
-    const newQuery: CitizenQuery = {
-      ...queryData,
-      id: Date.now().toString(),
-      dateSubmitted: new Date().toISOString().split('T')[0],
-      lastUpdated: new Date().toISOString().split('T')[0],
-      trackingId: `TRK-2024-${String(citizenQueries.length + 1).padStart(3, '0')}`
-    };
-    
-    setCitizenQueries(prev => [...prev, newQuery]);
-    alert(`Query submitted successfully! Your tracking ID is: ${newQuery.trackingId}`);
+  const handleSubmitQuery = async (queryData: Omit<CitizenQuery, 'id' | 'dateSubmitted' | 'lastUpdated' | 'trackingId'>) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/citizen-queries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(queryData),
+      });
+      if (!response.ok) {
+        let errorMsg = 'Failed to submit query';
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.message || errorMsg;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+      // Refetch queries after successful submission
+      fetch('http://localhost:5000/api/citizen-queries')
+        .then(res => res.json())
+        .then(data => setCitizenQueries(data));
+      alert('Query submitted successfully!');
+    } catch (error: any) {
+      alert(error.message || 'Failed to submit query');
+    }
   };
 
   const handleUpdateQuery = (queryId: string, updates: Partial<CitizenQuery>) => {

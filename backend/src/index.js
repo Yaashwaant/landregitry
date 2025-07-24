@@ -30,6 +30,7 @@ mongoose.connect(process.env.MONGODB_URI, {
   useUnifiedTopology: true
 }).then(() => {
   console.log('Connected to MongoDB');
+  console.log("Backend server started and using latest code!");
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });

@@ -55,12 +55,32 @@ router.get('/:trackingId', async (req, res) => {
 
 // Create new citizen query
 router.post('/', async (req, res) => {
+  console.log("POST /api/citizenQueries called");
   try {
-    const newQuery = new CitizenQuery(req.body);
+    // Generate a unique trackingId if not provided
+    let trackingId = req.body.trackingId;
+    if (!trackingId) {
+      const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+      const year = new Date().getFullYear();
+      trackingId = `TRK-${year}-${random}`;
+    }
+    // Set dateSubmitted and lastUpdated if not provided
+    const now = new Date();
+    const dateSubmitted = req.body.dateSubmitted ? new Date(req.body.dateSubmitted) : now;
+    const lastUpdated = req.body.lastUpdated ? new Date(req.body.lastUpdated) : now;
+    // Build the query object
+    const queryData = {
+      ...req.body,
+      trackingId,
+      dateSubmitted,
+      lastUpdated
+    };
+    const newQuery = new CitizenQuery(queryData);
     await newQuery.save();
 
     // Compute hash and add to blockchain
     const dataHash = computeCitizenQueryHash(newQuery);
+    console.log(`[BLOCKCHAIN] Citizen query hash: trackingId=${newQuery.trackingId}, dataHash=${dataHash}`);
     const fromAddress = process.env.BLOCKCHAIN_DEFAULT_ADDRESS;
     try {
       const receipt = await blockchainService.addCitizenQueryHash(newQuery.trackingId, dataHash, fromAddress);
@@ -79,6 +99,7 @@ router.post('/', async (req, res) => {
 
 // Update citizen query by tracking ID
 router.put('/:trackingId', async (req, res) => {
+  console.log("PUT /api/citizenQueries/:trackingId called");
   try {
     const updatedQuery = await CitizenQuery.findOneAndUpdate(
       { trackingId: req.params.trackingId },
