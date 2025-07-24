@@ -15,9 +15,12 @@ const landRecordSchema = new mongoose.Schema({
   dateCreated: { type: Date, default: Date.now },
   lastUpdated: { type: Date, default: Date.now },
   mapImageUrl: { type: String },
+  mapImageData: { type: Buffer },
+  mapImageContentType: { type: String },
   dbtiId: { type: String },
   litigationCaseId: { type: String },
-  notes: { type: String }
+  notes: { type: String },
+  imageUrl: { type: String } // Path or URL to uploaded image
 }, { timestamps: true });
 
 module.exports = mongoose.model('LandRecord', landRecordSchema);

@@ -14,9 +14,12 @@ export interface LandRecord {
   dateCreated: string;
   lastUpdated: string;
   mapImageUrl?: string;
+  mapImageBase64?: string;
   dbtiId?: string;
   litigationCaseId?: string;
   notes?: string;
+  imageUrl?: string; // Path or URL to uploaded image
+  imageFile?: File; // For form submission only
 }
 
 export interface CitizenQuery {

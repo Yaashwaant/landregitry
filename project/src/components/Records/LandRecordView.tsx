@@ -37,6 +37,18 @@ export const LandRecordView: React.FC<LandRecordViewProps> = ({ record, onClose 
             <p><strong>Tehsil:</strong> {record.tehsil}</p>
             <p><strong>Village:</strong> {record.village}</p>
             <p><strong>Land Type:</strong> {record.landType}</p>
+            {record.mapImageBase64 && (
+              <div className="mt-2">
+                <strong>Map Image:</strong><br />
+                <img src={record.mapImageBase64} alt="Map" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, marginTop: 4 }} />
+              </div>
+            )}
+            {record.imageUrl && (
+              <div className="mt-2">
+                <strong>Uploaded Image:</strong><br />
+                <img src={record.imageUrl} alt="Uploaded" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, marginTop: 4 }} />
+              </div>
+            )}
           </div>
           <div>
             <p><strong>Area:</strong> {record.area} {record.areaUnit}</p>

@@ -27,20 +27,44 @@ export const AddRecordForm: React.FC<AddRecordFormProps> = ({ onSave, onCancel, 
     notes: existingRecord?.notes || ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const recordData = {
-      ...formData,
-      area: parseFloat(formData.area) || 0,
-      compensationAmount: parseFloat(formData.compensationAmount) || 0,
-      mapImageUrl: formData.mapImageUrl || undefined,
-      dbtiId: formData.dbtiId || undefined,
-      litigationCaseId: formData.litigationCaseId || undefined,
-      notes: formData.notes || undefined
-    };
-    
-    onSave(recordData);
+    setError(null);
+
+    // Validation: At least one of mapImageUrl or imageFile must be provided (if either is required)
+    if (!formData.mapImageUrl && !imageFile) {
+      setError('Please provide either a Map Image URL or upload an image file.');
+      return;
+    }
+
+    // Optionally, validate mapImageUrl format if provided
+    if (formData.mapImageUrl && !/^https?:\/\//.test(formData.mapImageUrl)) {
+      setError('Map Image URL must be a valid URL starting with http:// or https://');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const recordData = {
+        ...formData,
+        area: parseFloat(formData.area) || 0,
+        compensationAmount: parseFloat(formData.compensationAmount) || 0,
+        mapImageUrl: formData.mapImageUrl || undefined,
+        dbtiId: formData.dbtiId || undefined,
+        litigationCaseId: formData.litigationCaseId || undefined,
+        notes: formData.notes || undefined,
+        imageFile // include image file in submission
+      };
+      await onSave(recordData);
+    } catch (err: any) {
+      setError(err?.message || 'An unexpected error occurred.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -62,7 +86,11 @@ export const AddRecordForm: React.FC<AddRecordFormProps> = ({ onSave, onCancel, 
           <X className="w-5 h-5" />
         </button>
       </div>
-
+      {error && (
+        <div className="bg-red-100 text-red-700 px-4 py-2 rounded mb-4 border border-red-300">
+          {error}
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -243,18 +271,20 @@ export const AddRecordForm: React.FC<AddRecordFormProps> = ({ onSave, onCancel, 
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Map Image URL
-            </label>
-            <input
-              type="url"
-              name="mapImageUrl"
-              value={formData.mapImageUrl}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="https://example.com/map.jpg"
-            />
+          <div className="flex gap-2 items-end">
+            {/* Remove Map Image URL field, keep only Upload Image */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Upload Image
+              </label>
+              <input
+                type="file"
+                name="imageFile"
+                accept="image/*"
+                onChange={e => setImageFile(e.target.files?.[0] || null)}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+            </div>
           </div>
 
           {formData.acquisitionStatus === 'paid' && (
@@ -309,15 +339,17 @@ export const AddRecordForm: React.FC<AddRecordFormProps> = ({ onSave, onCancel, 
             type="button"
             onClick={onCancel}
             className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-60"
+            disabled={isSubmitting}
           >
             <Save className="w-4 h-4" />
-            <span>Save Record</span>
+            <span>{isSubmitting ? 'Saving...' : 'Save Record'}</span>
           </button>
         </div>
       </form>

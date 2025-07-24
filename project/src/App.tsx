@@ -21,29 +21,37 @@ function App() {
   const [viewRecord, setViewRecord] = useState<LandRecord | null>(null);
   const [previousTab, setPreviousTab] = useState<string>('dashboard');
 
-  const handleAddRecord = (recordData: Omit<LandRecord, 'id' | 'dateCreated' | 'lastUpdated'>) => {
-    if (selectedRecord) {
-      // Update existing record
-      const updatedRecord: LandRecord = {
-        ...selectedRecord,
-        ...recordData,
-        lastUpdated: new Date().toISOString().split('T')[0]
-      };
-      setLandRecords(prev =>
-        prev.map(record => (record.id === updatedRecord.id ? updatedRecord : record))
-      );
-      setSelectedRecord(null);
-    } else {
-      // Add new record
-      const newRecord: LandRecord = {
-        ...recordData,
-        id: Date.now().toString(),
-        dateCreated: new Date().toISOString().split('T')[0],
-        lastUpdated: new Date().toISOString().split('T')[0]
-      };
+  const handleAddRecord = async (recordData: Omit<LandRecord, 'id' | 'dateCreated' | 'lastUpdated'>) => {
+    // Prepare form data for API
+    const formData = new FormData();
+    Object.entries(recordData).forEach(([key, value]) => {
+      if (key === 'imageFile' && value) {
+        formData.append('imageFile', value as File);
+      } else if (value !== undefined && value !== null) {
+        formData.append(key, value as string);
+      }
+    });
+
+    try {
+      const response = await fetch('http://localhost:5000/api/landRecords', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!response.ok) {
+        let errorMsg = 'Failed to add record';
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.message || errorMsg;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+      const newRecord = await response.json();
       setLandRecords(prev => [...prev, newRecord]);
+      setActiveTab('records');
+    } catch (error) {
+      // Instead of alert, throw error so AddRecordForm can display it
+      throw error;
     }
-    setActiveTab('records');
   };
 
   const handleViewRecord = (record: LandRecord) => {
