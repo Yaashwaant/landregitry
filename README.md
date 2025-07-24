@@ -86,6 +86,4 @@ This project is a land acquisition management system with blockchain integration
 
 Currently, no automated tests are included. Manual testing is recommended by running the backend and frontend and interacting with the UI and API.
 
----
 
-If you need help with deployment or further development, feel free to ask.
