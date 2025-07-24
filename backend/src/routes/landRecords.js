@@ -121,7 +121,14 @@ router.post('/', upload.single('imageFile'), async (req, res) => {
 
     const newRecord = new LandRecord(cleanData);
     await newRecord.save();
-    res.status(201).json(newRecord);
+    // Add mapImageBase64 to response if image exists
+    let rec = newRecord.toObject();
+    if (rec.mapImageData && rec.mapImageContentType) {
+      rec.mapImageBase64 = `data:${rec.mapImageContentType};base64,${rec.mapImageData.toString('base64')}`;
+    }
+    delete rec.mapImageData;
+    delete rec.mapImageContentType;
+    res.status(201).json(rec);
   } catch (err) {
     let message = 'Invalid data';
     if (err.name === 'ValidationError') {

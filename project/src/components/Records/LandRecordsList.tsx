@@ -16,6 +16,8 @@ export const LandRecordsList: React.FC<LandRecordsListProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [districtFilter, setDistrictFilter] = useState('all');
+  const [viewImage, setViewImage] = useState<string | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
 
   const filteredRecords = landRecords.filter(record => {
     const matchesSearch = 
@@ -157,10 +159,23 @@ export const LandRecordsList: React.FC<LandRecordsListProps> = ({
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      {record.mapImageUrl && (
+                      {/* View Map Image Button */}
+                      {record.mapImageBase64 ? (
                         <button
                           className="p-1 text-gray-400 hover:text-purple-600 transition-colors"
-                          title="View map"
+                          title="View map image"
+                          onClick={() => {
+                            setViewImage(record.mapImageBase64);
+                            setShowImageModal(true);
+                          }}
+                        >
+                          <MapPin className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <button
+                          className="p-1 text-gray-300 cursor-not-allowed"
+                          title="No map image available"
+                          disabled
                         >
                           <MapPin className="w-4 h-4" />
                         </button>
@@ -178,6 +193,21 @@ export const LandRecordsList: React.FC<LandRecordsListProps> = ({
             </div>
           )}
         </div>
+        {/* Map Image Modal */}
+        {showImageModal && viewImage && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full relative">
+              <button
+                className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                onClick={() => setShowImageModal(false)}
+                title="Close"
+              >
+                &times;
+              </button>
+              <img src={viewImage} alt="Map" className="w-full h-auto rounded" />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
