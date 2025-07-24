@@ -20,7 +20,8 @@ const landRecordSchema = new mongoose.Schema({
   dbtiId: { type: String },
   litigationCaseId: { type: String },
   notes: { type: String },
-  imageUrl: { type: String } // Path or URL to uploaded image
+  imageUrl: { type: String }, // Path or URL to uploaded image
+  txHash: { type: String } // Blockchain transaction hash for last update
 }, { timestamps: true });
 
 module.exports = mongoose.model('LandRecord', landRecordSchema);

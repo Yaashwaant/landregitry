@@ -86,4 +86,67 @@ This project is a land acquisition management system with blockchain integration
 
 Currently, no automated tests are included. Manual testing is recommended by running the backend and frontend and interacting with the UI and API.
 
+## Running the Blockchain (Local or Testnet)
+
+### A. Local Blockchain (Ganache + Truffle)
+
+1. **Start Ganache**
+   - **Option 1: Ganache GUI**
+     - Open the Ganache app and start a new workspace or quickstart.
+   - **Option 2: Ganache CLI**
+     ```sh
+     npx ganache --port 8545
+     ```
+
+2. **Deploy Your Smart Contract**
+   - In the `backend` directory:
+     ```sh
+     cd backend
+     npx truffle migrate --reset
+     ```
+
+3. **Update Backend with Contract Address**
+   - If you have a script for this (e.g., `scripts/updateEnvWithContractAddress.js`), run:
+     ```sh
+     node ../scripts/updateEnvWithContractAddress.js
+     ```
+   - Or, manually copy the deployed contract address from the migration output to your `.env` as `CONTRACT_ADDRESS`.
+
+4. **Start the Backend**
+   - In the `backend` directory:
+     ```sh
+     npm start
+     ```
+
+---
+
+### B. Sepolia Testnet (or other testnet)
+
+1. **Get a Sepolia RPC URL**
+   - Use Alchemy or Infura to get a free Sepolia endpoint.
+
+2. **Deploy the Contract to Sepolia**
+   - In your `backend` directory:
+     ```sh
+     npx truffle migrate --network sepolia
+     ```
+   - Make sure your `truffle-config.js` has the correct network settings and your wallet has testnet ETH.
+
+3. **Update `.env`**
+   - Set `TESTNET_RPC_URL` to your Sepolia RPC URL.
+   - Set `CONTRACT_ADDRESS` to the deployed contract address.
+
+4. **Start the Backend**
+   - In the `backend` directory:
+     ```sh
+     npm start
+     ```
+
+---
+
+### C. Confirm Blockchain is Running
+- When you add or update a record, you should see `[BLOCKCHAIN]` logs in your backend terminal with transaction hashes.
+
+---
+
 

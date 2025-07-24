@@ -62,7 +62,14 @@ router.post('/', async (req, res) => {
     // Compute hash and add to blockchain
     const dataHash = computeCitizenQueryHash(newQuery);
     const fromAddress = process.env.BLOCKCHAIN_DEFAULT_ADDRESS;
-    await blockchainService.addCitizenQueryHash(newQuery.trackingId, dataHash, fromAddress);
+    try {
+      const receipt = await blockchainService.addCitizenQueryHash(newQuery.trackingId, dataHash, fromAddress);
+      newQuery.txHash = receipt.transactionHash;
+      await newQuery.save();
+      console.log(`[BLOCKCHAIN] Citizen query registered: trackingId=${newQuery.trackingId}, txHash=${receipt.transactionHash}`);
+    } catch (err) {
+      console.error(`[BLOCKCHAIN ERROR] Failed to register citizen query: trackingId=${newQuery.trackingId}`, err);
+    }
 
     res.status(201).json(newQuery);
   } catch (err) {
@@ -83,7 +90,14 @@ router.put('/:trackingId', async (req, res) => {
     // Compute hash and update blockchain
     const dataHash = computeCitizenQueryHash(updatedQuery);
     const fromAddress = process.env.BLOCKCHAIN_DEFAULT_ADDRESS;
-    await blockchainService.updateCitizenQueryHash(updatedQuery.trackingId, dataHash, fromAddress);
+    try {
+      const receipt = await blockchainService.updateCitizenQueryHash(updatedQuery.trackingId, dataHash, fromAddress);
+      updatedQuery.txHash = receipt.transactionHash;
+      await updatedQuery.save();
+      console.log(`[BLOCKCHAIN] Citizen query updated: trackingId=${updatedQuery.trackingId}, txHash=${receipt.transactionHash}`);
+    } catch (err) {
+      console.error(`[BLOCKCHAIN ERROR] Failed to update citizen query: trackingId=${updatedQuery.trackingId}`, err);
+    }
 
     res.json(updatedQuery);
   } catch (err) {

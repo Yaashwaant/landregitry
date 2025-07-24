@@ -10,7 +10,7 @@ const router = express.Router();
 
 // Multer setup for image upload
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const upload = multer();
 
 // Helper to compute hash of land record data
 function computeLandRecordHash(record) {
@@ -72,12 +72,10 @@ router.get('/:surveyNumber', async (req, res) => {
   }
 });
 
-// Create new land record with image upload
-router.post('/', upload.single('imageFile'), async (req, res) => {
+// Create new land record (no image upload, but support FormData fields)
+router.post('/', upload.none(), async (req, res) => {
   try {
-    // Debug logging: print received body and file
-    console.log('Received body:', req.body);
-    console.log('Received file:', req.file);
+    console.log('POST /api/landRecords received body:', req.body);
     const recordData = req.body;
 
     // Required fields
@@ -100,19 +98,11 @@ router.post('/', upload.single('imageFile'), async (req, res) => {
       if (recordData[field] === '') delete recordData[field];
     });
 
-    // Handle image upload: save image as buffer in DB
-    if (req.file) {
-      recordData.mapImageData = req.file.buffer;
-      recordData.mapImageContentType = req.file.mimetype;
-    } else {
-      return res.status(400).json({ message: 'Image file is required.' });
-    }
-
     // Only use schema fields
     const allowedFields = [
       'surveyNumber', 'district', 'tehsil', 'village', 'ownerName', 'aadhaarId',
       'landType', 'area', 'areaUnit', 'acquisitionStatus', 'compensationAmount',
-      'dbtiId', 'litigationCaseId', 'notes', 'mapImageData', 'mapImageContentType'
+      'dbtiId', 'litigationCaseId', 'notes'
     ];
     const cleanData = {};
     for (const key of allowedFields) {
@@ -121,14 +111,23 @@ router.post('/', upload.single('imageFile'), async (req, res) => {
 
     const newRecord = new LandRecord(cleanData);
     await newRecord.save();
-    // Add mapImageBase64 to response if image exists
-    let rec = newRecord.toObject();
-    if (rec.mapImageData && rec.mapImageContentType) {
-      rec.mapImageBase64 = `data:${rec.mapImageContentType};base64,${rec.mapImageData.toString('base64')}`;
+
+    // Generate the hash
+    const dataHash = computeLandRecordHash(newRecord);
+    console.log(`[LAND RECORD HASH] surveyNumber=${newRecord.surveyNumber}, hash=${dataHash}`);
+
+    // Register on blockchain
+    const fromAddress = process.env.BLOCKCHAIN_DEFAULT_ADDRESS;
+    try {
+      const receipt = await blockchainService.addLandRecordHash(newRecord.surveyNumber, dataHash, fromAddress);
+      newRecord.txHash = receipt.transactionHash;
+      await newRecord.save();
+      console.log(`[BLOCKCHAIN] Land record registered: surveyNumber=${newRecord.surveyNumber}, txHash=${receipt.transactionHash}`);
+    } catch (err) {
+      console.error(`[BLOCKCHAIN ERROR] Failed to register land record: surveyNumber=${newRecord.surveyNumber}`, err);
     }
-    delete rec.mapImageData;
-    delete rec.mapImageContentType;
-    res.status(201).json(rec);
+
+    res.status(201).json(newRecord);
   } catch (err) {
     let message = 'Invalid data';
     if (err.name === 'ValidationError') {
@@ -140,20 +139,46 @@ router.post('/', upload.single('imageFile'), async (req, res) => {
   }
 });
 
-// Update land record by survey number
-router.put('/:surveyNumber', async (req, res) => {
+// Update land record by survey number (no image upload, but support FormData fields)
+router.put('/:surveyNumber', upload.none(), async (req, res) => {
   try {
+    console.log('PUT /api/landRecords/:surveyNumber received body:', req.body);
+    const updateData = req.body;
+    // Convert numeric fields
+    if (updateData.area) updateData.area = Number(updateData.area);
+    if (updateData.compensationAmount) updateData.compensationAmount = Number(updateData.compensationAmount);
+    // Remove empty optional fields
+    ['dbtiId', 'litigationCaseId', 'notes'].forEach(field => {
+      if (updateData[field] === '') delete updateData[field];
+    });
+    // Only use schema fields
+    const allowedFields = [
+      'district', 'tehsil', 'village', 'ownerName', 'aadhaarId',
+      'landType', 'area', 'areaUnit', 'acquisitionStatus', 'compensationAmount',
+      'dbtiId', 'litigationCaseId', 'notes'
+    ];
+    const cleanData = {};
+    for (const key of allowedFields) {
+      if (updateData[key] !== undefined) cleanData[key] = updateData[key];
+    }
     const updatedRecord = await LandRecord.findOneAndUpdate(
       { surveyNumber: req.params.surveyNumber },
-      req.body,
+      cleanData,
       { new: true }
     );
     if (!updatedRecord) return res.status(404).json({ message: 'Land record not found' });
 
-    // Compute hash and update blockchain
+    // Generate the hash
     const dataHash = computeLandRecordHash(updatedRecord);
     const fromAddress = process.env.BLOCKCHAIN_DEFAULT_ADDRESS;
-    await blockchainService.updateLandRecordHash(updatedRecord.surveyNumber, dataHash, fromAddress);
+    try {
+      const receipt = await blockchainService.updateLandRecordHash(updatedRecord.surveyNumber, dataHash, fromAddress);
+      updatedRecord.txHash = receipt.transactionHash;
+      await updatedRecord.save();
+      console.log(`[BLOCKCHAIN] Land record updated: surveyNumber=${updatedRecord.surveyNumber}, txHash=${receipt.transactionHash}`);
+    } catch (err) {
+      console.error(`[BLOCKCHAIN ERROR] Failed to update land record: surveyNumber=${updatedRecord.surveyNumber}`, err);
+    }
 
     res.json(updatedRecord);
   } catch (err) {

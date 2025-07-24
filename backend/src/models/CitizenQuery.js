@@ -20,7 +20,8 @@ const citizenQuerySchema = new mongoose.Schema({
   officialResponse: { type: String },
   resolutionDate: { type: Date },
   attachments: [{ type: String }],
-  trackingId: { type: String, required: true, unique: true }
+  trackingId: { type: String, required: true, unique: true },
+  txHash: { type: String } // Blockchain transaction hash for last update
 }, { timestamps: true });
 
 module.exports = mongoose.model('CitizenQuery', citizenQuerySchema);

@@ -18,6 +18,7 @@ export const LandRecordsList: React.FC<LandRecordsListProps> = ({
   const [districtFilter, setDistrictFilter] = useState('all');
   const [viewImage, setViewImage] = useState<string | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedRecordForModal, setSelectedRecordForModal] = useState<LandRecord | null>(null);
 
   const filteredRecords = landRecords.filter(record => {
     const matchesSearch = 
@@ -167,6 +168,7 @@ export const LandRecordsList: React.FC<LandRecordsListProps> = ({
                           onClick={() => {
                             setViewImage(record.mapImageBase64);
                             setShowImageModal(true);
+                            setSelectedRecordForModal(record);
                           }}
                         >
                           <MapPin className="w-4 h-4" />
@@ -204,7 +206,11 @@ export const LandRecordsList: React.FC<LandRecordsListProps> = ({
               >
                 &times;
               </button>
-              <img src={viewImage} alt="Map" className="w-full h-auto rounded" />
+              <img src={viewImage} alt="Map" className="w-full h-auto rounded mb-4" />
+              {/* Reupload Image Button and File Input */}
+              {selectedRecordForModal && (
+                <ReuploadImageButton record={selectedRecordForModal} onImageReuploaded={setViewImage} />
+              )}
             </div>
           </div>
         )}
@@ -212,3 +218,59 @@ export const LandRecordsList: React.FC<LandRecordsListProps> = ({
     </div>
   );
 };
+
+function ReuploadImageButton({ record, onImageReuploaded }: { record: LandRecord, onImageReuploaded: (newImage: string) => void }) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fileInputKey, setFileInputKey] = useState(Date.now());
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !record) return;
+    setIsUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('imageFile', file);
+      const response = await fetch(`http://localhost:5000/api/landRecords/${record.surveyNumber}`, {
+        method: 'PUT',
+        body: formData,
+      });
+      if (!response.ok) {
+        let errorMsg = 'Failed to update image';
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.message || errorMsg;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+      const updatedRecord = await response.json();
+      setFileInputKey(Date.now()); // reset file input
+      setIsUploading(false);
+      setError(null);
+      if (updatedRecord.mapImageBase64) {
+        onImageReuploaded(updatedRecord.mapImageBase64);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to update image');
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 flex flex-col items-center">
+      <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 disabled:opacity-60">
+        {isUploading ? 'Uploading...' : 'Reupload Image'}
+        <input
+          key={fileInputKey}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+          disabled={isUploading}
+        />
+      </label>
+      {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
+    </div>
+  );
+}

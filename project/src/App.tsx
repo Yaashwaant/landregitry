@@ -6,7 +6,7 @@ import { Header } from './components/Layout/Header';
 import { Sidebar } from './components/Layout/Sidebar';
 import { Dashboard } from './components/Dashboard/Dashboard';
 import { LandRecordsList } from './components/Records/LandRecordsList';
-import { AddRecordForm } from './components/Records/AddRecordForm';
+import { AddRecordForm, EditRecordForm } from './components/Records/AddRecordForm';
 import { LandRecordView } from './components/Records/LandRecordView';
 import { QueriesManagement } from './components/Queries/QueriesManagement';
 import { mockLandRecords, mockCitizenQueries } from './data/mockData';
@@ -54,6 +54,53 @@ function App() {
     }
   };
 
+  const handleSaveRecord = async (recordData: Omit<LandRecord, 'id' | 'dateCreated' | 'lastUpdated'>) => {
+    // Prepare form data for API
+    const formData = new FormData();
+    Object.entries(recordData).forEach(([key, value]) => {
+      if (key === 'imageFile' && value) {
+        formData.append('imageFile', value as File);
+      } else if (value !== undefined && value !== null) {
+        formData.append(key, value as string);
+      }
+    });
+
+    try {
+      let response;
+      if (selectedRecord) {
+        // Edit mode: PUT
+        response = await fetch(`http://localhost:5000/api/landRecords/${encodeURIComponent(selectedRecord.surveyNumber)}`, {
+          method: 'PUT',
+          body: formData,
+        });
+      } else {
+        // Add mode: POST
+        response = await fetch('http://localhost:5000/api/landRecords', {
+          method: 'POST',
+          body: formData,
+        });
+      }
+      if (!response.ok) {
+        let errorMsg = selectedRecord ? 'Failed to update record' : 'Failed to add record';
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.message || errorMsg;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+      const newOrUpdatedRecord = await response.json();
+      if (selectedRecord) {
+        setLandRecords(prev => prev.map(r => r.surveyNumber === selectedRecord.surveyNumber ? newOrUpdatedRecord : r));
+        setSelectedRecord(null);
+      } else {
+        setLandRecords(prev => [...prev, newOrUpdatedRecord]);
+      }
+      setActiveTab('records');
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const handleViewRecord = (record: LandRecord) => {
     setViewRecord(record);
     setPreviousTab(activeTab);
@@ -62,7 +109,7 @@ function App() {
 
   const handleEditRecord = (record: LandRecord) => {
     setSelectedRecord(record);
-    setActiveTab('add-record');
+    setActiveTab('edit-record');
   };
 
   const handleSubmitQuery = (queryData: Omit<CitizenQuery, 'id' | 'dateSubmitted' | 'lastUpdated' | 'trackingId'>) => {
@@ -134,12 +181,22 @@ function App() {
       case 'add-record':
         return (
           <AddRecordForm
-            onSave={handleAddRecord}
+            onSave={handleSaveRecord}
             onCancel={() => {
               setActiveTab('records');
               setSelectedRecord(null);
             }}
-            existingRecord={selectedRecord || undefined}
+          />
+        );
+      case 'edit-record':
+        return (
+          <EditRecordForm
+            onSave={handleSaveRecord}
+            onCancel={() => {
+              setActiveTab('records');
+              setSelectedRecord(null);
+            }}
+            existingRecord={selectedRecord}
           />
         );
       case 'view-record':

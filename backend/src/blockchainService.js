@@ -13,19 +13,47 @@ const contractAbi = contractJson.abi;
 const contract = new web3.eth.Contract(contractAbi, contractAddress);
 
 async function addLandRecordHash(surveyNumber, dataHash, fromAddress) {
-  return contract.methods.addLandRecord(surveyNumber, dataHash).send({ from: fromAddress });
+  try {
+    const receipt = await contract.methods.addLandRecord(surveyNumber, dataHash).send({ from: fromAddress });
+    console.log(`[BLOCKCHAIN] Land record registered: surveyNumber=${surveyNumber}, txHash=${receipt.transactionHash}`);
+    return receipt;
+  } catch (err) {
+    console.error(`[BLOCKCHAIN ERROR] Failed to register land record: surveyNumber=${surveyNumber}`, err);
+    throw err;
+  }
 }
 
 async function updateLandRecordHash(surveyNumber, dataHash, fromAddress) {
-  return contract.methods.updateLandRecord(surveyNumber, dataHash).send({ from: fromAddress });
+  try {
+    const receipt = await contract.methods.updateLandRecord(surveyNumber, dataHash).send({ from: fromAddress });
+    console.log(`[BLOCKCHAIN] Land record updated: surveyNumber=${surveyNumber}, txHash=${receipt.transactionHash}`);
+    return receipt;
+  } catch (err) {
+    console.error(`[BLOCKCHAIN ERROR] Failed to update land record: surveyNumber=${surveyNumber}`, err);
+    throw err;
+  }
 }
 
 async function addCitizenQueryHash(trackingId, dataHash, fromAddress) {
-  return contract.methods.addCitizenQuery(trackingId, dataHash).send({ from: fromAddress });
+  try {
+    const receipt = await contract.methods.addCitizenQuery(trackingId, dataHash).send({ from: fromAddress });
+    console.log(`[BLOCKCHAIN] Citizen query registered: trackingId=${trackingId}, txHash=${receipt.transactionHash}`);
+    return receipt;
+  } catch (err) {
+    console.error(`[BLOCKCHAIN ERROR] Failed to register citizen query: trackingId=${trackingId}`, err);
+    throw err;
+  }
 }
 
 async function updateCitizenQueryHash(trackingId, dataHash, fromAddress) {
-  return contract.methods.updateCitizenQuery(trackingId, dataHash).send({ from: fromAddress });
+  try {
+    const receipt = await contract.methods.updateCitizenQuery(trackingId, dataHash).send({ from: fromAddress });
+    console.log(`[BLOCKCHAIN] Citizen query updated: trackingId=${trackingId}, txHash=${receipt.transactionHash}`);
+    return receipt;
+  } catch (err) {
+    console.error(`[BLOCKCHAIN ERROR] Failed to update citizen query: trackingId=${trackingId}`, err);
+    throw err;
+  }
 }
 
 async function getLandRecordHash(surveyNumber) {
